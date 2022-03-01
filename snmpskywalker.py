@@ -1,4 +1,4 @@
-import sys, ipaddress
+import sys, re
 from typing import Dict
 from dataclasses import dataclass
 
@@ -29,6 +29,20 @@ IFDESCR = "1.3.6.1.2.1.2.2.1.2"
 IFTYPE = "1.3.6.1.2.1.2.2.1.3"
 CDPNEIGHBOR = "1.3.6.1.4.1.9.9.23.1.2.1.1.6"
 CDPADDRESS = "1.3.6.1.4.1.9.9.23.1.2.1.1.4"
+ROUTETABLE = "1.3.6.1.2.1.4.24.4.1.1"
+ROUTEMASK = "1.3.6.1.2.1.4.24.4.1.2"
+ROUTENEXTHOP = "1.3.6.1.2.1.4.24.4.1.4"
+ROUTEPROTO = "1.3.6.1.2.1.4.24.4.1.7"
+OSPFNEIGHBOR = "1.3.6.1.2.1.14.10.1.1"
+
+
+def print_dict(mydict: Dict) -> None:
+    for k, index in mydict.items():
+        for k, v in index.items():
+            print(
+                f"{k}: {v}", end="\t\t"
+            )  # Print each 'index' key/value pair all on one line separated by tabs
+        print()
 
 
 def build_iterator(host: str, community: str, oid: str):  # -> iterator?!
@@ -49,18 +63,23 @@ def build_iterator(host: str, community: str, oid: str):  # -> iterator?!
     return iterator
 
 
-def snmp_build_dict(request, oid_descr: str, mydata) -> None:
+def snmp_build_dict(request, oid: str, oid_descr: str, mydata: Dict) -> None:
     """
     builds/updates a dict (dataclass sent in as 'mydata' and updated based on new info pulled
     correlates to existing data (one dataclass instance for interface stuff, one for cdp neighbors, etc?)
     """
+
     response = []
     for errorIndication, errorStatus, errorIndex, snmp_response in request:
-        oid = snmp_response[0][0].prettyPrint()
-        index = oid.split(".")[-1]  # w.x.y.z.index
+        _ = snmp_response[0][0].prettyPrint()
+        # index = _.split(".")[-1]  # w.x.y.z.index -- old, not usable with iproute/etc
+        index = _.replace(oid, "").strip(
+            "."
+        )  # strip anything at end of oid (and the last .) this is the 'index'
+
         if (
             oid_descr == "cdpCacheAddress"
-        ):  # Convert crap to ipv4 for (so far) only this value
+        ):  # Convert crap to ipv4 for (so far) only this value which is returned as 'almost/kinda/not really' hex so must get useable value here rather than later
             value = ".".join([str(x) for x in snmp_response[0][1].asNumbers()])
         else:
             value = snmp_response[0][1].prettyPrint()
@@ -80,22 +99,19 @@ def do_interface_data_stuff():
     my_intf_data = SnmpInfo({})
 
     # BUILD INTERFACE INDEXES
-    request = build_iterator(HOST, COMMUNITY, IFDESCR)
+    request = build_iterator(host=HOST, community=COMMUNITY, oid=IFDESCR)
     snmp_build_dict(  # Grabs ALL ifdescr's
-        request=request, oid_descr="ifDescr", mydata=my_intf_data
+        request=request, oid=IFDESCR, oid_descr="ifDescr", mydata=my_intf_data
     )
 
     # BUILD INTERFACE TYPES
     request = build_iterator(HOST, COMMUNITY, IFTYPE)
     snmp_build_dict(  # Grabs ALL iftypes
-        request=request, oid_descr="ifType", mydata=my_intf_data
+        request=request, oid=IFTYPE, oid_descr="ifType", mydata=my_intf_data
     )
 
     # Print out Dict, already correlated
-    for index in my_intf_data.data:
-        print(
-            f"index: {index}\tifDescr: {my_intf_data.data[index]['ifDescr']}\tifType: {my_intf_data.data[index]['ifType']}"
-        )
+    print_dict(my_intf_data.data)
 
 
 def do_cdp_data_stuff():
@@ -105,6 +121,7 @@ def do_cdp_data_stuff():
     request = build_iterator(HOST, COMMUNITY, CDPNEIGHBOR)
     snmp_build_dict(  # Grabs ALL CDP Neighbor Hostnames
         request=request,
+        oid=CDPNEIGHBOR,
         oid_descr="cdpCacheDeviceId",
         mydata=my_cdp_data,
     )
@@ -112,18 +129,51 @@ def do_cdp_data_stuff():
     # BUILD CDP ADDRESSES
     request = build_iterator(HOST, COMMUNITY, CDPADDRESS)
     snmp_build_dict(  # Grabs ALL CDP Neighbor IP Addresses
-        request=request, oid_descr="cdpCacheAddress", mydata=my_cdp_data
+        request=request, oid=CDPADDRESS, oid_descr="cdpCacheAddress", mydata=my_cdp_data
     )
 
     # Print out Dict, already correlated
-    for index in my_cdp_data.data:
-        print(
-            f"index: {index}\tcdpCacheDeviceId: {my_cdp_data.data[index]['cdpCacheDeviceId']}\tcdpCacheAddress: {my_cdp_data.data[index]['cdpCacheAddress']}"
-        )
+    print_dict(my_cdp_data.data)
 
 
 def do_ip_route_stuff():
-    print("hi")
+    my_route_data = SnmpInfo({})
+
+    # BUILD ROUTE DESTINATIONS
+    request = build_iterator(HOST, COMMUNITY, ROUTETABLE)
+    snmp_build_dict(  # Grabs ALL route's
+        request=request,
+        oid=ROUTETABLE,
+        oid_descr="ipCidrRouteDest",
+        mydata=my_route_data,
+    )
+    # BUILD ROUTE MASKS
+    request = build_iterator(HOST, COMMUNITY, ROUTEMASK)
+    snmp_build_dict(  # Grabs ALL route's
+        request=request,
+        oid=ROUTEMASK,
+        oid_descr="ipCidrRouteMask",
+        mydata=my_route_data,
+    )
+    # BUILD ROUTE NEXT HOPS
+    request = build_iterator(HOST, COMMUNITY, ROUTENEXTHOP)
+    snmp_build_dict(  # Grabs ALL route's
+        request=request,
+        oid=ROUTENEXTHOP,
+        oid_descr="ipCidrRouteNextHop",
+        mydata=my_route_data,
+    )
+    # BUILD ROUTE PROTOCOL
+    request = build_iterator(HOST, COMMUNITY, ROUTEPROTO)
+    snmp_build_dict(  # Grabs ALL route's
+        request=request,
+        oid=ROUTEPROTO,
+        oid_descr="ipCidrRouteProto",
+        mydata=my_route_data,
+    )
+
+    # Print out Dict, already correlated
+    print_dict(my_route_data.data)
 
 
 def do_ospf_stuff():
