@@ -9,6 +9,29 @@ import (
 	g "github.com/gosnmp/gosnmp"
 )
 
+var IFDESCR string = "1.3.6.1.2.1.2.2.1.2"
+var IFTYPE string = "1.3.6.1.2.1.2.2.1.3"
+
+var myenv = SnmpEnv{
+	target:    "10.254.254.1",
+	port:      "161",
+	community: "gPublic",
+}
+
+type SnmpEnv struct {
+	target    string
+	port      string
+	community string
+}
+
+type SnmpDataOld struct {
+	s string
+}
+
+type SnmpData struct {
+	d map[string]string
+}
+
 func defaultSnmp() {
 	g.Default.Target = "10.254.254.1"
 	g.Default.Community = "gPublic"
@@ -41,15 +64,6 @@ func defaultSnmp() {
 		}
 	}
 }
-
-type SnmpEnv struct {
-	target    string
-	port      string
-	community string
-}
-
-var IFDESCR string = "1.3.6.1.2.1.2.2.1.2"
-var IFTYPE string = "1.3.6.1.2.1.2.2.1.3"
 
 func customSnmp(env SnmpEnv, oid string, d SnmpData) map[string]string {
 	if len(env.target) <= 0 {
@@ -112,14 +126,6 @@ func customSnmp(env SnmpEnv, oid string, d SnmpData) map[string]string {
 	return temp
 }
 
-type SnmpDataOld struct {
-	s string
-}
-
-type SnmpData struct {
-	d map[string]string
-}
-
 func do_interface_stuff_test(oid string) SnmpDataOld {
 	test := SnmpDataOld{oid}
 	return test
@@ -135,12 +141,6 @@ func do_interface_stuff() {
 	fmt.Printf("Here's M:\n")
 	fmt.Println(m)
 	fmt.Printf("\n")
-}
-
-var myenv = SnmpEnv{
-	target:    "10.254.254.1",
-	port:      "161",
-	community: "gPublic",
 }
 
 func main() {
