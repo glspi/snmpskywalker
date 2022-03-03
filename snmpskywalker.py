@@ -29,7 +29,7 @@ IFDESCR = "1.3.6.1.2.1.2.2.1.2"
 IFTYPE = "1.3.6.1.2.1.2.2.1.3"
 CDPNEIGHBOR = "1.3.6.1.4.1.9.9.23.1.2.1.1.6"
 CDPADDRESS = "1.3.6.1.4.1.9.9.23.1.2.1.1.4"
-ROUTETABLE = "1.3.6.1.2.1.4.24.4.1.1"
+ROUTEDEST = "1.3.6.1.2.1.4.24.4.1.1"
 ROUTEMASK = "1.3.6.1.2.1.4.24.4.1.2"
 ROUTENEXTHOP = "1.3.6.1.2.1.4.24.4.1.4"
 ROUTEPROTO = "1.3.6.1.2.1.4.24.4.1.7"
@@ -37,10 +37,10 @@ OSPFNEIGHBOR = "1.3.6.1.2.1.14.10.1.1"
 
 
 def print_dict(mydict: Dict) -> None:
-    for k, index in mydict.items():
-        for k, v in index.items():
+    for index, innerdict in mydict.items():
+        for k, v in innerdict.items():
             print(
-                f"{k}: {v}", end="\t\t"
+                f"{index}: {k}: {v}", end="\t\t"
             )  # Print each 'index' key/value pair all on one line separated by tabs
         print()
 
@@ -140,10 +140,10 @@ def do_ip_route_stuff():
     my_route_data = SnmpInfo({})
 
     # BUILD ROUTE DESTINATIONS
-    request = build_iterator(HOST, COMMUNITY, ROUTETABLE)
+    request = build_iterator(HOST, COMMUNITY, ROUTEDEST)
     snmp_build_dict(  # Grabs ALL route's
         request=request,
-        oid=ROUTETABLE,
+        oid=ROUTEDEST,
         oid_descr="ipCidrRouteDest",
         mydata=my_route_data,
     )
