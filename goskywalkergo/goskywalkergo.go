@@ -9,8 +9,8 @@ import (
 	g "github.com/gosnmp/gosnmp"
 )
 
-var IFDESCR string = "1.3.6.1.2.1.2.2.1.2"
-var IFTYPE string = "1.3.6.1.2.1.2.2.1.3"
+var IFDESCR string = "1.3.6.1.2.1.2.2.1.2" //.1"
+var IFTYPE string = "1.3.6.1.2.1.2.2.1.3"  //.1"
 
 var myenv = SnmpEnv{
 	target:    "10.254.254.1",
@@ -126,18 +126,18 @@ func customSnmp(env SnmpEnv, oid string, d SnmpData) map[string]string {
 	return temp
 }
 
-func do_interface_stuff_test(oid string) SnmpDataOld {
-	test := SnmpDataOld{oid}
-	return test
-}
-
 func do_interface_stuff() {
 
 	my_interface_data := SnmpData{
 		make(map[string]string),
 	}
 
-	m := customSnmp(myenv, "1.3.6.1.2.1.1.5.0", my_interface_data)
+	m := customSnmp(myenv, IFDESCR, my_interface_data)
+	fmt.Printf("Here's M:\n")
+	fmt.Println(m)
+	fmt.Printf("\n")
+
+	m = customSnmp(myenv, IFTYPE, my_interface_data)
 	fmt.Printf("Here's M:\n")
 	fmt.Println(m)
 	fmt.Printf("\n")
@@ -147,14 +147,9 @@ func main() {
 	//defaultSnmp()
 	//customSnmp()
 
-	var oids [2]string
-	oids[0] = IFDESCR
-	oids[1] = IFTYPE
+	// var oids [2]string
+	// oids[0] = IFDESCR
+	// oids[1] = IFTYPE
 
-	var my_interface_data SnmpDataOld
-	my_interface_data = do_interface_stuff_test(IFDESCR)
-	fmt.Printf("hello: %s .\n", my_interface_data.s)
-
-	//var test SnmpData
 	do_interface_stuff()
 }
