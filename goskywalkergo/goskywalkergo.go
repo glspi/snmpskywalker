@@ -31,10 +31,6 @@ type SnmpEnv struct {
 	community string
 }
 
-type SnmpData struct {
-	d map[string]string
-}
-
 func bulkWalkAll(env SnmpEnv, oid string, oid_descr string, temp map[string]map[string]string) map[string]map[string]string {
 	port, _ := strconv.ParseUint(env.port, 10, 16)
 	snmpObject := &g.GoSNMP{
