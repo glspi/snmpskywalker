@@ -9,8 +9,8 @@ import (
 	g "github.com/gosnmp/gosnmp"
 )
 
-var IFDESCR string = "1.3.6.1.2.1.2.2.1.2" //.1"
-var IFTYPE string = "1.3.6.1.2.1.2.2.1.3"  //.1"
+var IFDESCR string = "1.3.6.1.2.1.2.2.1.2.10101" // .10101 added temporarily, only doing single oid
+var IFTYPE string = "1.3.6.1.2.1.2.2.1.3.10101"  // .10101 added temporarily, only doing single oid
 
 var myenv = SnmpEnv{
 	target:    "10.254.254.1",
@@ -22,10 +22,6 @@ type SnmpEnv struct {
 	target    string
 	port      string
 	community string
-}
-
-type SnmpDataOld struct {
-	s string
 }
 
 type SnmpData struct {
