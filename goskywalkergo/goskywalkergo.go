@@ -35,116 +35,6 @@ type SnmpData struct {
 	d map[string]string
 }
 
-// func defaultSnmp() {
-// 	g.Default.Target = "10.254.254.1"
-// 	g.Default.Community = "gPublic"
-// 	err := g.Default.Connect()
-// 	if err != nil {
-// 		log.Fatalf("Connect() err: %v", err)
-// 	}
-// 	defer g.Default.Conn.Close()
-
-// 	oids := []string{"1.3.6.1.2.1.1.4.0", "1.3.6.1.2.1.1.7.0"}
-// 	result, err2 := g.Default.Get(oids) // Get() accepts up to g.MAX_OIDS
-// 	if err2 != nil {
-// 		log.Fatalf("Get() err: %v", err2)
-// 	}
-
-// 	for i, variable := range result.Variables {
-// 		fmt.Printf("%d: oid: %s ", i, variable.Name)
-
-// 		// the Value of each variable returned by Get() implements
-// 		// interface{}. You could do a type switch...
-// 		switch variable.Type {
-// 		case g.OctetString:
-// 			bytes := variable.Value.([]byte)
-// 			fmt.Printf("string: %s\n", string(bytes))
-// 		default:
-// 			// ... or often you're just interested in numeric values.
-// 			// ToBigInt() will return the Value as a BigInt, for plugging
-// 			// into your calculations.
-// 			fmt.Printf("number: %d\n", g.ToBigInt(variable.Value))
-// 		}
-// 	}
-// }
-
-// func printValue(pdu gosnmp.SnmpPDU) error {
-// 	fmt.Printf("%s = ", pdu.Name)
-
-// 	switch pdu.Type {
-// 	case gosnmp.OctetString:
-// 		b := pdu.Value.([]byte)
-// 		fmt.Printf("STRING: %s\n", string(b))
-// 	default:
-// 		fmt.Printf("TYPE %d: %d\n", pdu.Type, gosnmp.ToBigInt(pdu.Value))
-// 	}
-// 	return nil
-// }
-
-// func snmpGet(env SnmpEnv, oid string, d SnmpData) map[string]map[string]string {
-// 	if len(env.target) <= 0 {
-// 		log.Fatalf("environment variable not set: GOSNMP_TARGET")
-// 	}
-// 	if len(env.port) <= 0 {
-// 		log.Fatalf("environment variable not set: GOSNMP_PORT")
-// 	}
-// 	port, _ := strconv.ParseUint(env.port, 10, 16)
-
-// 	// Build our own GoSNMP struct, rather than using g.Default.
-// 	// Do verbose logging of packets.
-// 	params := &g.GoSNMP{
-// 		Target:    env.target,
-// 		Port:      uint16(port),
-// 		Community: env.community,
-// 		Version:   g.Version2c,
-// 		Timeout:   time.Duration(2) * time.Second,
-// 		//Logger:    g.NewLogger(log.New(os.Stdout, "", 0)),
-// 	}
-// 	err := params.Connect()
-// 	if err != nil {
-// 		log.Fatalf("Connect() err: %v", err)
-// 	}
-// 	defer params.Conn.Close()
-
-// 	// Function handles for collecting metrics on query latencies.
-// 	var sent time.Time
-// 	params.OnSent = func(x *g.GoSNMP) {
-// 		sent = time.Now()
-// 	}
-// 	params.OnRecv = func(x *g.GoSNMP) {
-// 		log.Println("Query latency in seconds:", time.Since(sent).Seconds())
-// 	}
-
-// 	//oids := []string{"1.3.6.1.2.1.1.4.0", "1.3.6.1.2.1.1.7.0"}
-// 	oids := []string{oid}
-// 	result, err2 := params.Get(oids) // Get() accepts up to g.MAX_OIDS
-// 	if err2 != nil {
-// 		log.Fatalf("Get() err: %v", err2)
-// 	}
-
-// 	temp := make(map[string]map[string]string)
-// 	temp2 := make(map[string]string)
-// 	for i, variable := range result.Variables {
-// 		fmt.Printf("%d: oid: %s ", i, variable.Name)
-// 		// the Value of each variable returned by Get() implements
-// 		// interface{}. You could do a type switch...
-// 		switch variable.Type {
-// 		case g.OctetString:
-// 			fmt.Printf("string: %s\n", string(variable.Value.([]byte)))
-// 			temp2[variable.Name] = string(variable.Value.([]byte))
-// 			temp[variable.Name] = temp2
-// 		default:
-// 			// ... or often you're just interested in numeric values.
-// 			// ToBigInt() will return the Value as a BigInt, for plugging
-// 			// into your calculations.
-// 			fmt.Printf("number: %d\n", g.ToBigInt(variable.Value))
-// 			temp2[variable.Name] = g.ToBigInt(variable.Value).String()
-// 			temp[variable.Name] = temp2
-// 		}
-// 	}
-// 	return temp
-// }
-
 func bulkWalkAll(env SnmpEnv, oid string, oid_descr string, temp map[string]map[string]string) map[string]map[string]string {
 	port, _ := strconv.ParseUint(env.port, 10, 16)
 	snmpObject := &g.GoSNMP{
@@ -163,11 +53,14 @@ func bulkWalkAll(env SnmpEnv, oid string, oid_descr string, temp map[string]map[
 	defer snmpObject.Conn.Close()
 
 	//err2 := params.BulkWalk(oid, printValue)
+
+	// DO THE WALKY WALK
 	results, err2 := snmpObject.BulkWalkAll(oid)
 	if err2 != nil {
 		log.Fatalf("Get() err: %v", err2)
 	}
 
+	// update map
 	for _, result := range results {
 		index := result.Name
 		test := strings.Replace(index, oid, "", -1)
@@ -175,18 +68,29 @@ func bulkWalkAll(env SnmpEnv, oid string, oid_descr string, temp map[string]map[
 		var value string
 		temp2 := make(map[string]string)
 
-		switch result.Type {
-		case g.OctetString:
+		switch oid_descr {
+		// friggin cdp address values still screwy
+		case "cdpCacheAddress":
 			value = string(result.Value.([]byte))
 			test := []byte(value)
-			//test2, _ := strconv.Atoi(string(test))
-			fmt.Printf("bytes = %b\n", test)
+			octettemp := [4]int{}
+			for k, v := range test {
+				octettemp[k] = int(v)
+			}
+			value = fmt.Sprintf("%d.%d.%d.%d", octettemp[0], octettemp[1], octettemp[2], octettemp[3])
 		default:
-			value = fmt.Sprintf("%s", result.Value)
+			switch result.Type {
+			case g.Integer:
+				value = fmt.Sprintf("%d", result.Value)
+			default:
+				value = fmt.Sprintf("%s", result.Value)
+			}
 		}
 
+		// create inner map (ifdescr: value)
 		temp2[oid_descr] = value
 
+		// check if index exists, if not create index and value(inner map), if so, add new key to existing inner map
 		_, ok := temp[index]
 		if ok == true {
 			temp[index][oid_descr] = value
@@ -198,11 +102,12 @@ func bulkWalkAll(env SnmpEnv, oid string, oid_descr string, temp map[string]map[
 	return temp
 }
 
+// print my map, so pretty
 func print_map(mymap map[string]map[string]string) {
 	for _, innermap := range mymap {
 		for k, v := range innermap {
 			//fmt.Print(index, ": ", k, ": ", v, "\t")
-			fmt.Print(k, ": ", v, "\t")
+			fmt.Print(k, ": ", v, "\t\t")
 		}
 		fmt.Printf("\n")
 	}
